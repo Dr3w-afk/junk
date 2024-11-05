@@ -1,3 +1,6 @@
+# Outlier.ai earnings analysis - dump some of that CSV data into readable stuff
+# usage: "python earnings-analysis.py Outlier_earnings_report.csv"
+
 import csv
 from datetime import datetime, timedelta
 import sys
