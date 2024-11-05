@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime, timedelta
+import sys
 
 def parse_time_str(time_str):
     """Convert time string like '1m 8s' or '9m ' to seconds"""
@@ -47,7 +48,7 @@ def parse_money(money_str):
         return 0.0
     return float(money_str.replace('$', ''))
 
-def analyze_earnings_file(csv_data):
+def analyze_earnings_file(csv_file):
     # Dictionary to store daily totals
     daily_totals = {}
     grand_totals = {
@@ -61,59 +62,60 @@ def analyze_earnings_file(csv_data):
     }
     
     # Read CSV data
-    csv_reader = csv.DictReader(csv_data.splitlines())
-    
-    for row in csv_reader:
-        date = row['workDate']
-        duration = row.get('duration', '')
-        pay_type = row['payType']
-        payout = parse_money(row['payout'])
+    with open(csv_file, 'r') as file:
+        csv_reader = csv.DictReader(file)
         
-        # Initialize daily totals if not exists
-        if date not in daily_totals:
-            daily_totals[date] = {
-                'total_seconds': 0,
-                'prepay_seconds': 0,
-                'overtime_seconds': 0,
-                'total_earnings': 0.0,
-                'prepay_earnings': 0.0,
-                'overtime_earnings': 0.0,
-                'mission_earnings': 0.0
-            }
-        
-        # Update earnings for all types
-        daily_totals[date]['total_earnings'] += payout
-        grand_totals['total_earnings'] += payout
-        
-        if pay_type == 'missionReward':
-            daily_totals[date]['mission_earnings'] += payout
-            grand_totals['mission_earnings'] += payout
-            continue
-        
-        try:
-            # Convert duration to seconds for non-mission entries
-            seconds = parse_time_str(duration)
+        for row in csv_reader:
+            date = row['workDate']
+            duration = row.get('duration', '')
+            pay_type = row['payType']
+            payout = parse_money(row['payout'])
             
-            # Update daily totals
-            daily_totals[date]['total_seconds'] += seconds
-            if pay_type == 'prepay':
-                daily_totals[date]['prepay_seconds'] += seconds
-                daily_totals[date]['prepay_earnings'] += payout
-                grand_totals['prepay_earnings'] += payout
-            elif pay_type == 'overtimePay':
-                daily_totals[date]['overtime_seconds'] += seconds
-                daily_totals[date]['overtime_earnings'] += payout
-                grand_totals['overtime_earnings'] += payout
+            # Initialize daily totals if not exists
+            if date not in daily_totals:
+                daily_totals[date] = {
+                    'total_seconds': 0,
+                    'prepay_seconds': 0,
+                    'overtime_seconds': 0,
+                    'total_earnings': 0.0,
+                    'prepay_earnings': 0.0,
+                    'overtime_earnings': 0.0,
+                    'mission_earnings': 0.0
+                }
+            
+            # Update earnings for all types
+            daily_totals[date]['total_earnings'] += payout
+            grand_totals['total_earnings'] += payout
+            
+            if pay_type == 'missionReward':
+                daily_totals[date]['mission_earnings'] += payout
+                grand_totals['mission_earnings'] += payout
+                continue
+            
+            try:
+                # Convert duration to seconds for non-mission entries
+                seconds = parse_time_str(duration)
                 
-            # Update grand time totals
-            grand_totals['total_seconds'] += seconds
-            if pay_type == 'prepay':
-                grand_totals['prepay_seconds'] += seconds
-            elif pay_type == 'overtimePay':
-                grand_totals['overtime_seconds'] += seconds
-                
-        except Exception as e:
-            print(f"Error processing row with date {date}, duration {duration}: {str(e)}")
+                # Update daily totals
+                daily_totals[date]['total_seconds'] += seconds
+                if pay_type == 'prepay':
+                    daily_totals[date]['prepay_seconds'] += seconds
+                    daily_totals[date]['prepay_earnings'] += payout
+                    grand_totals['prepay_earnings'] += payout
+                elif pay_type == 'overtimePay':
+                    daily_totals[date]['overtime_seconds'] += seconds
+                    daily_totals[date]['overtime_earnings'] += payout
+                    grand_totals['overtime_earnings'] += payout
+                    
+                # Update grand time totals
+                grand_totals['total_seconds'] += seconds
+                if pay_type == 'prepay':
+                    grand_totals['prepay_seconds'] += seconds
+                elif pay_type == 'overtimePay':
+                    grand_totals['overtime_seconds'] += seconds
+                    
+            except Exception as e:
+                print(f"Error processing row with date {date}, duration {duration}: {str(e)}")
     
     # Sort dates properly using datetime objects
     sorted_dates = sorted(daily_totals.keys(), 
@@ -140,7 +142,10 @@ def analyze_earnings_file(csv_data):
     if grand_totals['mission_earnings'] > 0:
         print(f"Mission rewards: ${grand_totals['mission_earnings']:.2f}")
 
-# Example usage with the provided CSV file
-with open('Outlier_Earnings_Report (3).csv', 'r') as file:
-    csv_data = file.read()
-    analyze_earnings_file(csv_data)
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python earnings_analysis.py <csv_file_path>")
+        sys.exit(1)
+
+    csv_file = sys.argv[1]
+    analyze_earnings_file(csv_file)
